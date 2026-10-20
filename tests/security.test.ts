@@ -23,6 +23,7 @@ before(async () => {
   await db.exec(await readFile(new URL('../supabase/migrations/202610200001_auth_business.sql', import.meta.url), 'utf8'));
   await db.exec(await readFile(new URL('../supabase/migrations/202610200002_defer_auth_profile.sql', import.meta.url), 'utf8'));
   await db.exec(await readFile(new URL('../supabase/migrations/202610200003_delete_batch.sql', import.meta.url), 'utf8'));
+  await db.exec(await readFile(new URL('../supabase/migrations/202610200004_manage_products.sql', import.meta.url), 'utf8'));
   for (const [id, username, role] of [[admin, 'admin_utama', 'admin'], [staff, 'budi', 'field_staff'], [other, 'dedi', 'field_staff']]) {
     await db.query('insert into auth.users(id,raw_app_meta_data,encrypted_password) values($1,$2::jsonb,$3)', [id, JSON.stringify({ username, name: username, role, audit_actor_id: id === admin ? null : admin }), 'mock-hash']);
   }

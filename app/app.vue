@@ -295,6 +295,25 @@ const catalog = ref<CatalogProduct[]>([]);
 const catalogForm = reactive({ fish: "", size: "" });
 const catalogError = ref("");
 const showProductForm = ref(false);
+const managingProducts = ref(false);
+const editingProductId = ref<string | null>(null);
+const savingProduct = ref(false);
+function editCatalogProduct(product: CatalogProduct) {
+  editingProductId.value = product.id;
+  Object.assign(catalogForm, { fish: product.fish, size: product.size });
+  catalogError.value = ''; showProductForm.value = true;
+}
+async function deleteCatalogProduct(product: CatalogProduct) {
+  if (savingProduct.value) return;
+  if (!await confirmDialog.value?.confirm({ title: 'Hapus produk ikan?', message: `${product.fish} · Size ${product.size} akan dihapus dari master produk. Transaksi batch lama tidak berubah.`, label: 'Ya, hapus produk' })) return;
+  savingProduct.value = true; catalogError.value = '';
+  try {
+    await $fetch('/api/products/manage', { method: 'POST', body: { action: 'delete', id: product.id } });
+    catalog.value = catalog.value.filter(p => p.id !== product.id);
+    await refreshActivity(); notify('Produk ikan dihapus.');
+  } catch (e) { catalogError.value = requestMessage(e); }
+  finally { savingProduct.value = false; }
+}
 const saleProducts = computed(() => {
   const unique = new Map<string, { fish: string; size: string }>();
   for (const p of active.value?.items ?? [])
@@ -306,6 +325,7 @@ const saleProducts = computed(() => {
   return [...unique.values()];
 });
 async function addCatalogProduct() {
+  if (savingProduct.value) return;
   catalogError.value = "";
   const fish = catalogForm.fish.trim(),
     size = catalogForm.size.trim();
@@ -316,6 +336,7 @@ async function addCatalogProduct() {
   if (
     catalog.value.some(
       (p) =>
+        p.id !== editingProductId.value &&
         p.fish.toLowerCase() === fish.toLowerCase() &&
         p.size.toLowerCase() === size.toLowerCase(),
     )
@@ -324,19 +345,26 @@ async function addCatalogProduct() {
       "Produk dengan nama ikan dan size tersebut sudah tersedia.";
     return;
   }
-  const product = { id: crypto.randomUUID(), fish, size };
+  const product = { id: editingProductId.value ?? crypto.randomUUID(), fish, size };
+  savingProduct.value = true;
   try {
     if (!online.value) throw new Error('offline');
-    const result = await $fetch<{ product: CatalogProduct }>('/api/products/save', { method: 'POST', body: product });
-    catalog.value.push(result.product);
+    if (editingProductId.value) {
+      await $fetch('/api/products/manage', { method: 'POST', body: { action: 'edit', ...product } });
+      catalog.value = catalog.value.map(p => p.id === product.id ? product : p);
+    } else {
+      const result = await $fetch<{ product: CatalogProduct }>('/api/products/save', { method: 'POST', body: product });
+      if (!catalog.value.some(p => p.id === result.product.id)) catalog.value.push(result.product);
+    }
     await refreshActivity();
     catalogForm.fish = "";
     catalogForm.size = "";
     showProductForm.value = false;
+    editingProductId.value = null;
     notify("Produk tersimpan di server.");
   } catch (e) {
     catalogError.value = !online.value ? 'Sambungkan internet untuk menyimpan produk. Isian tetap tersedia.' : requestMessage(e);
-  }
+  } finally { savingProduct.value = false; }
 }
 let toastTimer: ReturnType<typeof setTimeout>;
 const pendingBatchId = ref(crypto.randomUUID());
@@ -1733,13 +1761,15 @@ onBeforeUnmount(() => {
                   "
                 >
                   Batal</button
-                ><button class="primary" :disabled="!ready">
-                  <IconPlus :size="17" /> Simpan produk
+                ><button class="primary" :disabled="!ready || savingProduct">
+                   <IconPlus :size="17" /> {{ savingProduct ? 'Menyimpan…' : editingProductId ? 'Simpan perubahan' : 'Simpan produk' }}
                 </button>
               </div>
             </form>
           </template>
           <section v-else class="catalog-list">
+            <p v-if="catalogError" class="form-error" role="alert">{{ catalogError }}</p>
+            <button class="secondary" :disabled="savingProduct" @click="managingProducts = !managingProducts; catalogError = ''">{{ managingProducts ? 'Selesai kelola produk' : 'Kelola produk' }}</button>
             <div class="list-toolbar">
               <h2>
                 Daftar produk <span class="count">{{ catalog.length }}</span>
@@ -1748,6 +1778,8 @@ onBeforeUnmount(() => {
                 class="primary"
                 @click="
                   showProductForm = true;
+                  editingProductId = null;
+                  catalogForm.fish = ''; catalogForm.size = '';
                   catalogError = '';
                 "
               >
@@ -1760,6 +1792,7 @@ onBeforeUnmount(() => {
             <div v-for="p in catalog" :key="p.id" class="catalog-row">
               <strong>{{ p.fish }}</strong
               ><span>{{ p.size }}</span>
+              <div v-if="managingProducts" class="transaction-actions"><button class="secondary" :disabled="savingProduct" @click="editCatalogProduct(p)">Edit</button><button class="secondary" :disabled="savingProduct" @click="deleteCatalogProduct(p)">Hapus</button></div>
             </div>
             <div v-if="!catalog.length" class="empty">
               <IconFish :size="30" />
