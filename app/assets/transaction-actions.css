@@ -1,0 +1,8 @@
+.transaction-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; min-width: 0; }
+.transaction-actions .secondary { min-height: 36px; }
+.confirm-dialog { width: min(440px, calc(100vw - 32px)); box-sizing: border-box; margin: auto; padding: 28px; border: 1px solid #dfe5ee; border-radius: 14px; background: white; color: #26354b; }
+.confirm-dialog::backdrop { background: rgb(15 23 42 / 40%); }
+.confirm-dialog h2 { font-size: 20px; margin: 0 0 12px; }
+.confirm-dialog p { font-size: 14px; line-height: 1.7; color: #64748b; margin-bottom: 24px; overflow-wrap: anywhere; }
+.confirm-dialog .form-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; }
+@media (max-width: 767px) { .transaction-actions { grid-column: 1 / -1; width: 100%; } }

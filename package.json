@@ -1,0 +1,27 @@
+{
+  "name": "panen-iwak",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "nuxt dev",
+    "build": "nuxt build",
+    "typecheck": "nuxt typecheck",
+    "postinstall": "nuxt prepare"
+  },
+  "dependencies": {
+    "@fontsource-variable/dm-sans": "^5.0.0",
+    "@supabase/supabase-js": "^2.118.0",
+    "@tabler/icons-vue": "^3.0.0",
+    "decimal.js": "^10.0.0",
+    "dexie": "^4.0.0",
+    "nuxt": "^4.0.0",
+    "vue": "^3.5.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.10",
+    "@types/node": "^26.6.5",
+    "typescript": "^5.0.0",
+    "vue-tsc": "^3.0.0"
+  }
+}
