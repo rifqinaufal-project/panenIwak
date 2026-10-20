@@ -1,6 +1,6 @@
 export default defineEventHandler(async event => {
   const user = await requireProfile(event), db = backend(event);
-  let batchQuery = db.from('batches').select('*').order('created_at', { ascending: false });
+  let batchQuery = db.from('batches').select('*').is('deleted_at', null).order('created_at', { ascending: false });
   if (user.role !== 'admin') batchQuery = batchQuery.eq('owner_id', user.id);
   const batches = await batchQuery;
   databaseError(batches.error);

@@ -56,6 +56,21 @@ const currentUser = ref<Profile | null>(null);
 const authChecked = ref(false);
 const signingOut = ref(false);
 const managingBatch = ref(false);
+const deletingBatch = ref(false);
+async function deleteBatch() {
+  if (!active.value || deletingBatch.value || savingEntry.value || savingSales.value) return;
+  const batch = active.value;
+  const confirmed = await confirmDialog.value?.confirm({ title: 'Hapus batch ini?', message: `${batch.code} · ${batch.origin} beserta seluruh pembelian, biaya, dan penjualannya akan dikeluarkan dari daftar dan laporan. Riwayat tetap disimpan. Tidak ada tombol pulihkan di aplikasi.`, label: 'Ya, hapus batch' });
+  if (!confirmed || active.value?.id !== batch.id) return;
+  deletingBatch.value = true; error.value = '';
+  try {
+    await $fetch('/api/batches/delete', { method: 'POST', body: { id: batch.id, version: batch.version } });
+    batches.value = batches.value.filter(b => b.id !== batch.id);
+    selected.value = null; transaction.value = null; managingBatch.value = false;
+    await refreshActivity(); notify('Batch dihapus dari daftar dan laporan.');
+  } catch (e) { error.value = requestMessage(e); }
+  finally { deletingBatch.value = false; }
+}
 const confirmDialog = ref<{ confirm: (options: { title: string; message: string; label?: string }) => Promise<boolean> } | null>(null);
 const savingEntry = ref(false);
 const workspaceError = ref('');
@@ -206,6 +221,7 @@ function exportReport() {
       "Bobot beli (kg)",
       "Bobot jual (kg)",
       "Selisih (kg)",
+      "HPP umum/kg beli",
       "HPP efektif/kg terjual",
     ],
     ...reportRows.value.map((b) => {
@@ -224,6 +240,7 @@ function exportReport() {
         m.bought.toString(),
         m.sold.toString(),
         m.difference.toString(),
+        m.bought.isZero() ? '' : m.cost.div(m.bought).toFixed(2),
         m.hpp?.toFixed(2) ?? '',
       ];
     }),
@@ -1448,6 +1465,8 @@ onBeforeUnmount(() => {
                   <th>Pembelian</th>
                   <th>Perjalanan</th>
                   <th>Total biaya</th>
+                  <th>HPP umum / kg beli</th>
+                  <th>HPP efektif / kg terjual</th>
                   <th>Pendapatan</th>
                   <th>Laba</th>
                   <th>Margin</th>
@@ -1466,6 +1485,8 @@ onBeforeUnmount(() => {
                   <td>{{ idr(metrics(b.items).purchases) }}</td>
                   <td>{{ idr(metrics(b.items).expense) }}</td>
                   <td>{{ idr(metrics(b.items).cost) }}</td>
+                  <td>{{ metrics(b.items).bought.isZero() ? '—' : idr(metrics(b.items).cost.div(metrics(b.items).bought)) }}</td>
+                  <td>{{ metrics(b.items).hpp === null ? '—' : idr(metrics(b.items).hpp!) }}</td>
                   <td>{{ idr(metrics(b.items).revenue) }}</td>
                   <td
                     :class="
@@ -1500,6 +1521,8 @@ onBeforeUnmount(() => {
                   <td>{{ idr(reportTotals.purchases) }}</td>
                   <td>{{ idr(reportTotals.expense) }}</td>
                   <td>{{ idr(reportTotals.cost) }}</td>
+                  <td>{{ reportTotals.bought.isZero() ? '—' : idr(reportTotals.cost.div(reportTotals.bought)) }}</td>
+                  <td>{{ reportTotals.hpp === null ? '—' : idr(reportTotals.hpp) }}</td>
                   <td>{{ idr(reportTotals.revenue) }}</td>
                   <td>{{ idr(reportTotals.profit) }}</td>
                   <td>
@@ -2109,12 +2132,6 @@ onBeforeUnmount(() => {
             </div>
             <div class="batch-heading-actions">
               <button class="secondary" @click="managingBatch = true; error = ''">Edit batch</button>
-              <button class="secondary" @click="startTransaction('purchase')">
-                <IconPlus :size="16" /> Tambah pembelian
-              </button>
-              <button class="secondary" @click="startTransaction('expense')">
-                <IconPlus :size="16" /> Tambah biaya perjalanan
-              </button>
               <button class="primary" @click="startTransaction('sale')">
                 <IconPlus :size="16" /> Tambah penjualan
               </button>
@@ -2181,7 +2198,12 @@ onBeforeUnmount(() => {
         </template>
         <div v-if="managingBatch && !transaction" class="page-heading">
           <div><div class="breadcrumb">{{ active.code }} <span>/</span> Edit batch</div><h1>Edit transaksi batch</h1><p>Pilih pembelian, biaya, atau penjualan yang ingin dikoreksi atau dihapus.</p></div>
-          <button class="secondary" @click="managingBatch = false; error = ''">Selesai</button>
+          <div class="batch-heading-actions">
+            <button class="secondary" :disabled="deletingBatch" @click="startTransaction('purchase')"><IconPlus :size="16" /> Tambah pembelian</button>
+            <button class="secondary" :disabled="deletingBatch" @click="startTransaction('expense')"><IconPlus :size="16" /> Tambah biaya perjalanan</button>
+            <button class="secondary" :disabled="deletingBatch" @click="deleteBatch">{{ deletingBatch ? 'Menghapus…' : 'Hapus batch' }}</button>
+            <button class="secondary" :disabled="deletingBatch" @click="managingBatch = false; error = ''">Selesai</button>
+          </div>
         </div>
         <template v-if="transaction">
           <div class="page-heading">

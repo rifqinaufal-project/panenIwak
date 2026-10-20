@@ -22,6 +22,7 @@ before(async () => {
   await db.exec(`create role anon; create role authenticated; create role service_role; create schema auth; create table auth.users(id uuid primary key,raw_app_meta_data jsonb,encrypted_password text);`);
   await db.exec(await readFile(new URL('../supabase/migrations/202610200001_auth_business.sql', import.meta.url), 'utf8'));
   await db.exec(await readFile(new URL('../supabase/migrations/202610200002_defer_auth_profile.sql', import.meta.url), 'utf8'));
+  await db.exec(await readFile(new URL('../supabase/migrations/202610200003_delete_batch.sql', import.meta.url), 'utf8'));
   for (const [id, username, role] of [[admin, 'admin_utama', 'admin'], [staff, 'budi', 'field_staff'], [other, 'dedi', 'field_staff']]) {
     await db.query('insert into auth.users(id,raw_app_meta_data,encrypted_password) values($1,$2::jsonb,$3)', [id, JSON.stringify({ username, name: username, role, audit_actor_id: id === admin ? null : admin }), 'mock-hash']);
   }
@@ -105,4 +106,18 @@ test('editing and deleting transactions retains auditable before/after documents
   assert.equal(logs.rows.length, 3);
   assert.ok(logs.rows.some(l => l.old_values?.items?.[0]?.fish === 'Bandeng koreksi' && l.new_values.items.length === 0));
   assert.ok(logs.rows.every(l => l.username === 'admin_utama'));
+});
+test('batch deletion checks ownership/version, retains data and audit, and prevents edits', async () => {
+  const id = '20000000-0000-4000-8000-000000000010';
+  await db.query('select public.commit_batch($1,$2,$3::jsonb,0)', [staff, id, JSON.stringify(document)]);
+  await assert.rejects(db.query('select public.delete_batch($1,$2,1)', [other, id]), /ACCESS_DENIED/);
+  await assert.rejects(db.query('select public.delete_batch($1,$2,2)', [admin, id]), /VERSION_CONFLICT/);
+  await db.query('select public.delete_batch($1,$2,1)', [admin, id]);
+  await db.query('select public.delete_batch($1,$2,1)', [admin, id]);
+  const row = (await db.query<any>('select * from public.batches where id=$1', [id])).rows[0];
+  assert.ok(row.deleted_at); assert.equal(row.document.items.length, 1);
+  assert.equal((await db.query('select id from public.batches where id=$1 and deleted_at is null', [id])).rows.length, 0);
+  await assert.rejects(db.query('select public.commit_batch($1,$2,$3::jsonb,2)', [admin, id, JSON.stringify({ ...document, origin: 'Changed' })]), /ACCESS_DENIED/);
+  const logs = await db.query<any>("select * from public.audit_logs where batch_id=$1 and action='Batch dihapus'", [id]);
+  assert.equal(logs.rows.length, 1); assert.equal(logs.rows[0].username, 'admin_utama');
 });
