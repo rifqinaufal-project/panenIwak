@@ -25,6 +25,8 @@ import {
   IconReceipt,
   IconRefresh,
   IconShieldCheck,
+  IconEdit,
+  IconTrash,
 } from "@tabler/icons-vue";
 import Decimal from "decimal.js";
 import type { Profile } from '../shared/types/auth';
@@ -295,7 +297,6 @@ const catalog = ref<CatalogProduct[]>([]);
 const catalogForm = reactive({ fish: "", size: "" });
 const catalogError = ref("");
 const showProductForm = ref(false);
-const managingProducts = ref(false);
 const editingProductId = ref<string | null>(null);
 const savingProduct = ref(false);
 function editCatalogProduct(product: CatalogProduct) {
@@ -1769,7 +1770,6 @@ onBeforeUnmount(() => {
           </template>
           <section v-else class="catalog-list">
             <p v-if="catalogError" class="form-error" role="alert">{{ catalogError }}</p>
-            <button class="secondary" :disabled="savingProduct" @click="managingProducts = !managingProducts; catalogError = ''">{{ managingProducts ? 'Selesai kelola produk' : 'Kelola produk' }}</button>
             <div class="list-toolbar">
               <h2>
                 Daftar produk <span class="count">{{ catalog.length }}</span>
@@ -1787,12 +1787,12 @@ onBeforeUnmount(() => {
               </button>
             </div>
             <div class="catalog-row catalog-head">
-              <span>Nama ikan</span><span>Size</span>
+              <span>Nama ikan</span><span>Size</span><span></span>
             </div>
             <div v-for="p in catalog" :key="p.id" class="catalog-row">
               <strong>{{ p.fish }}</strong
               ><span>{{ p.size }}</span>
-              <div v-if="managingProducts" class="transaction-actions"><button class="secondary" :disabled="savingProduct" @click="editCatalogProduct(p)">Edit</button><button class="secondary" :disabled="savingProduct" @click="deleteCatalogProduct(p)">Hapus</button></div>
+              <div class="catalog-actions"><button type="button" class="icon-button" :disabled="savingProduct" :aria-label="`Edit ${p.fish} size ${p.size}`" title="Edit produk" @click="editCatalogProduct(p)"><IconEdit :size="16" /></button><button type="button" class="icon-button danger" :disabled="savingProduct" :aria-label="`Hapus ${p.fish} size ${p.size}`" title="Hapus produk" @click="deleteCatalogProduct(p)"><IconTrash :size="16" /></button></div>
             </div>
             <div v-if="!catalog.length" class="empty">
               <IconFish :size="30" />
