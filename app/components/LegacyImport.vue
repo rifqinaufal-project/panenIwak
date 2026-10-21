@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import Dexie from 'dexie';
-const emit = defineEmits<{ imported: [] }>();
+const emit = defineEmits<{ imported: []; busy: [value: boolean] }>();
 const rows = ref<any[]>([]), products = ref<any[]>([]), selected = ref<string[]>([]);
 const viewed = ref(false), busy = ref(false), includeProducts = ref(false), status = ref('');
+watch(busy, value => emit('busy', value), { flush: 'sync' });
 async function preview() {
   status.value = ''; viewed.value = true;
   if (!await Dexie.exists('panen-iwak-demo-v1')) { status.value = 'Tidak ada database lokal lama di browser ini.'; return; }
