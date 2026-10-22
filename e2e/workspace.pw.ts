@@ -1,70 +1,5 @@
-import { expect, test, type Page } from '@playwright/test';
-
-async function mockWorkspace(page: Page, options: { staff?: boolean; loggedOut?: boolean; logs?: unknown[]; holdAuth?: Promise<void>; holdWorkspace?: Promise<void> } = {}) {
-  const date = new Date().toISOString().slice(0, 10);
-  const user = { id: 'visual-admin', name: 'Andra', username: 'andra', role: options.staff ? 'field_staff' : 'admin', is_active: true };
-  const state = {
-    loggedIn: !options.loggedOut,
-    failSave: false,
-    failWorkspace: false,
-    holdSave: undefined as Promise<void> | undefined,
-    saves: 0,
-    batches: [{
-      id: 'b1', code: 'PI-0018', origin: 'Lamongan', destination: '', staff: '', date, closed: false, version: 1,
-      items: [
-        { id: 'p1', kind: 'purchase', fish: 'Nila', size: '8–10', weight: '100', price: '20000', description: '', date },
-        { id: 's1', kind: 'sale', fish: 'Nila', size: '', weight: '50', price: '30000', description: '', date },
-      ],
-    }],
-    products: [{ id: 'prod1', fish: 'Nila', size: '8–10' }],
-  };
-  // Every API call, including writes, is intercepted. No production records/accounts.
-  await page.route('**/api/**', async route => {
-    const request = route.request();
-    const path = new URL(request.url()).pathname;
-    if (path === '/api/auth/me') {
-      if (options.holdAuth) await options.holdAuth;
-      return route.fulfill({ status: state.loggedIn ? 200 : 401, json: state.loggedIn ? { user } : { statusMessage: 'Unauthorized' } });
-    }
-    if (path === '/api/auth/login') { state.loggedIn = true; return route.fulfill({ json: { user } }); }
-    if (path === '/api/auth/logout') { state.loggedIn = false; return route.fulfill({ json: {} }); }
-    if (path === '/api/workspace') {
-      if (options.holdWorkspace) await options.holdWorkspace;
-      if (state.failWorkspace) return route.fulfill({ status: 503, json: { statusMessage: 'Data contoh belum dapat dimuat.' } });
-      return route.fulfill({ json: { batches: state.batches, products: state.products, logs: options.logs ?? [] } });
-    }
-    if (path === '/api/admin/users' && request.method() === 'GET') return route.fulfill({ json: { users: [user] } });
-    if (request.method() !== 'GET') {
-      state.saves++;
-      if (state.holdSave) await state.holdSave;
-      if (state.failSave) return route.fulfill({ status: 503, json: { statusMessage: 'Server contoh tidak tersedia.' } });
-      const body = request.postDataJSON();
-      if (path === '/api/products/save') {
-        state.products.push(body);
-        return route.fulfill({ json: { product: body } });
-      }
-      if (path === '/api/products/manage') {
-        state.products = state.products.filter(product => product.id !== body.id);
-        if (body.action === 'edit') state.products.push({ id: body.id, fish: body.fish, size: body.size });
-        return route.fulfill({ json: {} });
-      }
-      if (path === '/api/batches/save') {
-        const batch = { ...state.batches[0]!, ...body, version: (body.version ?? 0) + 1 };
-        state.batches = [...state.batches.filter(batch => batch.id !== body.id), batch];
-        return route.fulfill({ json: { batch } });
-      }
-      if (path === '/api/batches/delete') {
-        state.batches = state.batches.filter(batch => batch.id !== body.id);
-        return route.fulfill({ json: {} });
-      }
-    }
-    return route.fulfill({ status: 500, json: { statusMessage: `Unexpected mock API: ${request.method()} ${path}` } });
-  });
-  return state;
-}
-
-const menu = (page: Page, name: string) => page.locator('.main-nav').getByRole('button', { name, exact: true });
-const dialog = (page: Page) => page.locator('dialog[open]');
+import { expect, test } from '@playwright/test';
+import { mockWorkspace, menu, dialog } from './fixtures/workspace';
 
 test('menu URLs, browser Back/Forward and refresh keep the selected screen', async ({ page }) => {
   await mockWorkspace(page);
@@ -248,6 +183,48 @@ test('saving a purchase returns to management, not a stale transaction URL', asy
   await expect(dialog(page)).not.toBeVisible();
   expect(state.saves).toBe(1);
   expect(String(state.batches[0]!.items.find(item => item.id === 'p1')?.weight)).toBe('120');
+});
+
+test('saved expenses update detail, dashboard and both report HPP columns', async ({ page }) => {
+  await mockWorkspace(page);
+  await page.goto('/batch/b1/biaya/baru');
+  await page.getByLabel('Jumlah biaya (Rp)', { exact: true }).fill('150000');
+  await page.getByRole('button', { name: 'Simpan transaksi', exact: true }).click();
+  await expect(page).toHaveURL('/batch/b1/edit');
+  await page.getByRole('button', { name: 'Selesai', exact: true }).click();
+  await expect(page.locator('.detail-hpp-summary > div').nth(0).locator('strong')).toHaveText('Rp21.500');
+  await expect(page.locator('.detail-hpp-summary > div').nth(1).locator('strong')).toHaveText('Rp43.000');
+  await expect(page.locator('.detail-metrics > div').nth(1).locator('strong')).toHaveText('Rp2.150.000');
+  await menu(page, 'Dashboard').click();
+  await expect(page.locator('.cost-total strong')).toHaveText('Rp2.150.000');
+  await expect(page.locator('.performance-card > strong')).toHaveText('-Rp650.000');
+  await menu(page, 'Laporan').click();
+  const cells = page.locator('.report-results tbody tr').first().locator('td');
+  await expect(cells.nth(3)).toHaveText('Rp2.150.000');
+  await expect(cells.nth(4)).toHaveText('Rp21.500');
+  await expect(cells.nth(5)).toHaveText('Rp43.000');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
+});
+
+test('linked-sale correction stays isolated until confirmed and saved', async ({ page }) => {
+  const state = await mockWorkspace(page);
+  await page.goto('/batch/b1/transaksi/p1/edit');
+  await page.getByRole('combobox', { name: 'Jenis ikan', exact: true }).selectOption('__other');
+  await page.getByLabel('Nama ikan lainnya', { exact: true }).fill('Lele');
+  await page.getByLabel('Size', { exact: true }).fill('Besar');
+  await page.getByRole('button', { name: 'Simpan transaksi', exact: true }).click();
+  await expect(dialog(page)).toContainText('1 penjualan terkait');
+  await dialog(page).getByRole('button', { name: 'Batal', exact: true }).click();
+  expect(state.saves).toBe(0);
+  expect(state.batches[0]!.items.map(item => item.fish)).toEqual(['Nila', 'Nila']);
+  await expect(page.getByLabel('Nama ikan lainnya', { exact: true })).toHaveValue('Lele');
+  await page.getByRole('button', { name: 'Simpan transaksi', exact: true }).click();
+  await dialog(page).getByRole('button', { name: 'Simpan koreksi', exact: true }).click();
+  await expect(page).toHaveURL('/batch/b1/edit');
+  expect(state.saves).toBe(1);
+  expect(state.batches[0]!.items.map(item => item.fish)).toEqual(['Lele', 'Lele']);
+  expect(state.batches[0]!.items.find(item => item.id === 's1')!.size).toBe('');
+  await expect(page.locator('.transaction-row').filter({ hasText: 'Penjualan Lele' })).toContainText('Campur semua size');
 });
 
 test('new batches and multi-item sales leave forms only after a successful save', async ({ page }) => {

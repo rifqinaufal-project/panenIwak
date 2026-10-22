@@ -46,7 +46,34 @@ Menu memiliki URL tetap: `/dashboard`, `/batch`, `/produk`, `/laporan`, `/log`, 
 
 Back/Forward dan refresh mempertahankan tujuan URL. Login juga mempertahankan tautan yang diizinkan. Data tersimpan dimuat ulang dari server; **draft form hanya ada di memori**, bukan dipulihkan sesudah refresh. Perpindahan dari form yang berubah memerlukan konfirmasi; refresh/penutupan tab memakai peringatan bawaan browser bila didukung. Penyimpanan yang sedang berjalan memblokir perpindahan halaman.
 
-`app/app.vue` menampung `NuxtPage`, halaman catch-all memvalidasi URL, dan `app/components/WorkspaceApp.vue` mempertahankan antarmuka serta state workspace selama navigasi. Logika keuangan dan pemetaan URL berada di `shared/utils/` agar bisa diuji tanpa browser.
+`app/app.vue` menampung `NuxtPage`, halaman catch-all memvalidasi URL, dan `app/components/WorkspaceApp.vue` merangkai antarmuka workspace selama navigasi.
+
+## Arsitektur workspace
+
+Pemisahan berdasarkan tanggung jawab dan arah dependency, bukan sekadar panjang file:
+
+| Bagian | Lokasi | Tanggung jawab |
+| --- | --- | --- |
+| Domain | `shared/types/workspace.ts`, `shared/utils/finance.ts`, `shared/utils/transactions.ts` | Model transaksi, perhitungan Decimal, validasi, dan aturan koreksi transaksi. Tanpa Vue, HTTP, router, atau browser. |
+| Kontrak repository | `app/features/{workspace,auth,users,legacy-import}/contracts.ts` | Operasi data yang dibutuhkan controller, tanpa mengetahui `$fetch`, Supabase, atau Dexie. |
+| Controller fitur | `app/features/{batches,products,dashboard,reports,auth,users,legacy-import}/` | State reaktif, alur simpan/hapus, dan koordinasi validasi dengan repository yang diinjeksi. |
+| Infrastruktur HTTP | `app/repositories/{workspace,auth,users}-http.ts` | Implementasi kontrak repository dan pemetaan payload endpoint. |
+| Infrastruktur data lama | `app/repositories/legacy-indexeddb.ts` | Membaca snapshot IndexedDB dengan transaksi read-only, memeriksa struktur data, dan menutup koneksi. |
+| Koordinasi workspace | `app/features/workspace/` | Sesi, data, routing, notifikasi, dan perlindungan isian belum tersimpan. |
+| Composition root | `app/features/workspace/useWorkspace.ts`, `app/composables/use{LoginScreen,UsersPanel,LegacyImportPanel}.ts` | Memilih adapter, menghubungkan controller, lifecycle, dan event komponen; bukan tempat aturan bisnis baru. |
+| Presentasi | `app/components/WorkspaceApp.vue` dan komponen fitur di `app/components/` | Merangkai layar, input, dan aksi pengguna. Tidak mengakses repository/HTTP langsung. |
+
+Alur utamanya: **tampilan → controller → kontrak repository ← adapter HTTP**. Controller menggunakan aturan domain; domain tidak bergantung pada controller atau tampilan. Adapter tetap memanggil API Nuxt yang memverifikasi izin di server—validasi klien bukan pengganti otorisasi server.
+
+State dibuat per instance workspace, bukan singleton lintas akun/request SSR. Perpindahan URL menginisialisasi form fitur tujuan dan baseline perubahan; kegagalan simpan tidak menghapus draft. Format rupiah/bobot/tanggal dan mekanisme unduh CSV berada di `app/utils/`.
+
+`LoginScreen.vue`, `UsersPanel.vue`, dan `LegacyImport.vue` juga tidak mengakses HTTP/IndexedDB langsung. Login/registrasi serta sesi menggunakan kontrak autentikasi yang sama; tabel dan formulir akun terpisah di `app/components/users/`. Konfirmasi dialog memakai referensi per instance, bukan state global.
+
+Impor lama tetap selektif dan tidak mengubah/menghapus database sumber maupun mengatribusikan log lama ke akun. Struktur yang tidak dapat dibaca ditolak dengan pesan jelas, bukan dilewati diam-diam atau dibuatkan nilai pengganti. Impor berhenti pada kegagalan; batch yang berhasil dilepas dari pilihan, sedangkan sisanya tetap dipilih untuk retry dengan ID asli. Refresh workspace setelah impor berjalan di latar belakang agar panel, hasil, pilihan retry, dan draft akun tidak terhapus.
+
+Password hanya berada di memori formulir dan payload permintaan, tidak disimpan di storage atau log. Password dibersihkan setelah operasi berhasil atau formulir dibatalkan. Kebijakan registrasi admin, verifikasi izin server, endpoint backend, dan migrasi Supabase tidak diubah oleh refactor ini.
+
+`tests/architecture.test.ts` menjaga batas dependency seluruh komponen dan controller. Tes domain/controller di `tests/` memakai repository pengganti tanpa mount Vue atau request HTTP, termasuk kegagalan akun, perlindungan password, serta impor parsial/retry.
 
 ## Pengujian
 
@@ -57,6 +84,6 @@ bunx playwright install chromium
 bun run test:e2e
 ```
 
-Tes browser membangun aplikasi produksi lalu menjalankannya di port 3101, pada ukuran desktop dan mobile. Semua API diintersep menggunakan data sintetis, termasuk operasi simpan; tes tidak memerlukan atau membuat akun/data produksi. Cakupan meliputi deep link, Back/Forward, refresh, akses staf, form belum tersimpan, kegagalan simpan, dan halaman/data yang tidak ditemukan.
+Tes browser membangun aplikasi produksi lalu menjalankannya di port 3101, pada ukuran desktop dan mobile. Semua API diintersep menggunakan data sintetis, termasuk operasi simpan; tes tidak memerlukan atau membuat akun/data produksi. Fixture API bersama berada di `e2e/fixtures/workspace.ts`. Cakupan meliputi deep link, Back/Forward, refresh, akses staf, form belum tersimpan, kegagalan simpan, akun/reset password, serta impor selektif/parsial dari IndexedDB sintetis dengan pemeriksaan bahwa sumber tidak berubah.
 
 Penyimpanan offline dan service worker/PWA belum tersedia. Jangan mengandalkan browser untuk menyimpan draft ketika tab ditutup atau aplikasi dihentikan sistem operasi.
