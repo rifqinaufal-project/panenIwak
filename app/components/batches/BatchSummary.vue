@@ -90,23 +90,12 @@ const weightNote = computed(() => {
         <small>Bobot terjual − bobot dibeli</small>
       </div>
       <div>
-        <dt>Persentase selisih</dt>
-        <dd>{{ totals.differencePercent === null ? '—' : `${totals.differencePercent.gt(0) ? '+' : ''}${kg(totals.differencePercent)}%` }}</dd>
-        <small>Terhadap total bobot dibeli</small>
+        <dt>Estimasi penjualan selisih</dt>
+        <dd class="batch-weight-sales-value">{{ totals.extraWeightSalesValue === null ? '—' : idr(totals.extraWeightSalesValue) }}</dd>
+        <small>Bukan laba tambahan</small>
       </div>
     </dl>
     <p class="batch-summary-note">{{ weightNote }}</p>
-    <div v-if="totals.extraWeightSalesValue !== null && totals.salePerKg !== null" class="batch-weight-estimate">
-      <div>
-        <span>Estimasi nilai penjualan selisih bobot</span>
-        <strong>{{ idr(totals.extraWeightSalesValue) }}</strong>
-      </div>
-      <p>
-        {{ kg(totals.difference) }} kg × harga jual rata-rata {{ idr(totals.salePerKg) }}/kg.
-        Menggunakan rata-rata seluruh penjualan, bukan harga jual khusus bobot selisih.
-      </p>
-      <p><b>Sudah termasuk dalam pendapatan. Bukan laba tambahan.</b></p>
-    </div>
   </section>
   <section class="batch-hpp-detail">
     <div class="section-heading">
@@ -148,24 +137,21 @@ const weightNote = computed(() => {
 <style scoped>
 .batch-summary-heading { margin-bottom: 14px; }
 .detail-metrics > div { min-width: 0; }
-.detail-metrics strong, .batch-weight-metrics dd, .batch-weight-estimate strong,
+.detail-metrics strong, .batch-weight-metrics dd,
 .detail-hpp-summary strong { font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .detail-metrics .metric-hint { color: #616c7d; font-size: 11px; line-height: 1.7; }
 .cost-breakdown { display: flex; flex-direction: column; gap: 4px; }
 .cost-breakdown > span { display: flex; flex-wrap: wrap; column-gap: 8px; justify-content: space-between; }
 .cost-breakdown b { font-weight: 500; }
 .batch-weight-summary { padding: 22px; margin-bottom: 28px; border-radius: 20px; background: var(--panel); }
-.batch-weight-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; margin: 24px 0 18px; }
+.batch-weight-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; margin: 18px 0 12px; }
 .batch-weight-metrics > div { min-width: 0; }
 .batch-weight-metrics dt { color: #616c7d; font-size: 12px; margin-bottom: 12px; }
 .batch-weight-metrics dd { margin: 0 0 8px; font-size: 27px; font-weight: 600; letter-spacing: -.6px; }
+.batch-weight-metrics .batch-weight-sales-value { font-size: clamp(18px, 2vw, 27px); }
 .batch-weight-metrics dd small { font-size: 14px; font-weight: 400; letter-spacing: 0; }
 .batch-weight-metrics > div > small { color: #616c7d; font-size: 11px; line-height: 1.6; }
 .batch-summary-note { color: #616c7d; font-size: 12px; line-height: 1.7; margin: 0; }
-.batch-weight-estimate { border-top: 1px solid var(--line); margin-top: 18px; padding-top: 18px; }
-.batch-weight-estimate > div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; font-size: 13px; }
-.batch-weight-estimate strong { font-size: 18px; }
-.batch-weight-estimate p { color: #616c7d; font-size: 11px; line-height: 1.7; margin: 8px 0 0; }
 .detail-hpp-summary span, .detail-hpp-summary small { color: #616c7d; line-height: 1.7; }
 @media (max-width: 1023px) {
   .detail-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
