@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { draftProductHpps, metrics, productHpps, safeDecimal, weightDifferenceValue } from '../shared/utils/finance';
+import { draftProductHpps, metrics, metricsForSoldBatches, productHpps, safeDecimal, weightDifferenceValue } from '../shared/utils/finance';
 
 const item = (kind: 'purchase' | 'expense' | 'sale', weight: string, price: string, fish = 'Nila', size = '8–10') => ({ kind, weight, price, fish, size });
 
@@ -29,6 +29,16 @@ describe('financial calculation safeguards', () => {
     expect(total.cost.toString()).toBe('2200000');
     expect(total.profit.toString()).toBe('-2200000');
     expect(total.hpp).toBeNull();
+  });
+
+  test('dashboard totals ignore costs from batches without sales', () => {
+    const total = metricsForSoldBatches([
+      { items: [item('purchase', '100', '20000'), item('expense', '0', '200000')] },
+      { items: [item('purchase', '50', '22000'), item('expense', '0', '100000'), item('sale', '50', '30000')] },
+    ]);
+    expect(total.revenue.toString()).toBe('1500000');
+    expect(total.cost.toString()).toBe('1200000');
+    expect(total.profit.toString()).toBe('300000');
   });
 
   test('purchase and effective HPP use their distinct denominators', () => {

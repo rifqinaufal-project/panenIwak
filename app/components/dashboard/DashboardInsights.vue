@@ -76,7 +76,7 @@ const composition = computed(() => [
         <IconChartBar :size="19" class="muted" />
       </div>
       <div class="cost-total">
-        <span>Total biaya tercatat</span><strong>{{ idr(totals.cost) }}</strong>
+        <span>Total biaya terealisasi</span><strong>{{ idr(totals.cost) }}</strong>
       </div>
       <div class="cost-bar" :class="{ 'is-empty': totals.cost.isZero() }">
         <span
@@ -100,7 +100,7 @@ const composition = computed(() => [
         </div>
       </div>
       <div class="cost-note">
-        <IconShieldCheck :size="16" /> Perhitungan menggunakan seluruh transaksi tercatat.
+        <IconShieldCheck :size="16" /> Hanya batch yang sudah memiliki penjualan yang dihitung.
       </div>
     </section>
   </aside>

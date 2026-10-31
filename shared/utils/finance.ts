@@ -51,6 +51,17 @@ export function metrics(items: readonly FinancialItem[]) {
   };
 }
 
+/** Dashboard profit only recognizes costs from batches that have started selling. */
+export function metricsForSoldBatches(
+  batches: readonly { items: readonly FinancialItem[] }[],
+) {
+  return metrics(
+    batches
+      .filter((batch) => batch.items.some((item) => item.kind === 'sale'))
+      .flatMap((batch) => batch.items),
+  );
+}
+
 type PurchaseInput = { fish: string; size: string; weight: Decimal.Value; price: Decimal.Value };
 
 /** Preview groups preserve incomplete rows, without inventing a valid HPP for them. */

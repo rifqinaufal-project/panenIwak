@@ -1,6 +1,6 @@
 import { computed, ref, type Ref } from 'vue';
 import type { Batch } from '#shared/types/workspace';
-import { metrics } from '#shared/utils/finance';
+import { metrics, metricsForSoldBatches } from '#shared/utils/finance';
 import { today } from '../../utils/workspace-format';
 import { downloadCsv } from '../../utils/download-csv';
 
@@ -22,7 +22,7 @@ export function useOverview(batches: Ref<Batch[]>, notify: (message: string) => 
       );
     }),
   );
-  const totals = computed(() => metrics(visible.value.flatMap((batch) => batch.items)));
+  const totals = computed(() => metricsForSoldBatches(visible.value));
   function download() {
     downloadCsv('panen-iwak-ringkasan.csv', [
       ['Batch', 'Tanggal', 'Asal', 'Status', 'Pendapatan', 'Biaya', 'Laba'],

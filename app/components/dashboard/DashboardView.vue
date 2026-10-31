@@ -31,7 +31,7 @@ defineEmits<{ open: [batch: Batch]; allBatches: []; download: [] }>();
           </div>
         </div>
         <div class="metric">
-          <div class="metric-label">Total biaya <IconReceipt :size="17" /></div>
+          <div class="metric-label">Total biaya terealisasi <IconReceipt :size="17" /></div>
           <strong>{{ idr(totals.cost) }}</strong>
           <div class="metric-foot">
             <span>Pembelian + perjalanan</span><span>{{ batches.length }} batch</span>
