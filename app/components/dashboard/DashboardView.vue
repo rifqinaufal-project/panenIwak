@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { IconArrowRight, IconArrowUpRight, IconReceipt, IconTruck } from '@tabler/icons-vue';
 import type { Batch } from '#shared/types/workspace';
+import type { ExportFormat } from '#shared/types/export';
 import { metrics } from '#shared/utils/finance';
 import { dateLabel, idr, kg } from '../../utils/workspace-format';
 import DashboardInsights from './DashboardInsights.vue';
 import FinancialChart from './FinancialChart.vue';
 
-defineProps<{ batches: Batch[]; totals: ReturnType<typeof metrics> }>();
-defineEmits<{ open: [batch: Batch]; allBatches: []; download: [] }>();
+defineProps<{ batches: Batch[]; totals: ReturnType<typeof metrics>; exporting: ExportFormat | null }>();
+defineEmits<{ open: [batch: Batch]; allBatches: []; download: [format: ExportFormat] }>();
 </script>
 <template>
   <div class="dashboard-layout">
@@ -38,7 +39,7 @@ defineEmits<{ open: [batch: Batch]; allBatches: []; download: [] }>();
           </div>
         </div>
       </div>
-      <FinancialChart :batches="batches" @download="$emit('download')" />
+      <FinancialChart :batches="batches" :exporting="exporting" @download="$emit('download', $event)" />
       <section class="recent-section">
         <div class="section-heading">
           <div>

@@ -78,7 +78,8 @@ const router = useRouter();
             :batch-count="overview.visible.length"
             :product-form="routing.showProductForm"
             :editing-product="!!routing.editingProductId"
-            @download="routing.page === 'Laporan' ? reports.download() : overview.download()"
+            :exporting="routing.page === 'Laporan' ? reports.exporting : overview.exporting"
+            @download="routing.page === 'Laporan' ? reports.download($event) : overview.download($event)"
             @new-batch="router.push('/batch/baru')"
             @new-product="router.push('/produk/baru')"
           />
@@ -86,6 +87,7 @@ const router = useRouter();
             v-if="routing.page === 'Dashboard'"
             :batches="overview.visible"
             :totals="overview.totals"
+            :exporting="overview.exporting"
             @open="routing.openBatch"
             @all-batches="routing.go('Batch')"
             @download="overview.download"

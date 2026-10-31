@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { IconCalendar, IconChevronDown, IconDownload, IconPlus } from '@tabler/icons-vue';
+import { IconCalendar, IconChevronDown, IconPlus } from '@tabler/icons-vue';
 import type Decimal from 'decimal.js';
+import type { ExportFormat } from '#shared/types/export';
 import type { WorkspacePage } from '#shared/utils/workspace-routes';
 import { idr } from '../../utils/workspace-format';
+import ExportActions from '../ExportActions.vue';
 
 const props = defineProps<{
   page: WorkspacePage;
@@ -10,9 +12,10 @@ const props = defineProps<{
   batchCount: number;
   productForm: boolean;
   editingProduct: boolean;
+  exporting: ExportFormat | null;
 }>();
 const period = defineModel<string>('period', { required: true });
-defineEmits<{ download: []; newBatch: []; newProduct: [] }>();
+defineEmits<{ download: [format: ExportFormat]; newBatch: []; newProduct: [] }>();
 const title = computed(
   () =>
     ({
@@ -55,14 +58,11 @@ const description = computed(
           <option>Minggu ini</option></select
         ><IconChevronDown :size="14" />
       </label>
-      <button
+      <ExportActions
         v-if="page === 'Dashboard' || page === 'Laporan'"
-        class="icon-button export"
-        aria-label="Unduh laporan CSV"
-        @click="$emit('download')"
-      >
-        <IconDownload :size="19" />
-      </button>
+        :exporting="exporting"
+        @download="$emit('download', $event)"
+      />
       <button
         v-if="!['Pengguna', 'Produk', 'Log'].includes(page)"
         class="primary"

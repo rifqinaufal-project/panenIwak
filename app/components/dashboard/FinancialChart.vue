@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { IconDownload } from '@tabler/icons-vue';
+import type { ExportFormat } from '#shared/types/export';
 import type { Batch } from '#shared/types/workspace';
 import { itemAmount } from '#shared/utils/finance';
 import { idr, kg } from '../../utils/workspace-format';
+import ExportActions from '../ExportActions.vue';
 
-const props = defineProps<{ batches: Batch[] }>();
-defineEmits<{ download: [] }>();
+const props = defineProps<{ batches: Batch[]; exporting: ExportFormat | null }>();
+defineEmits<{ download: [format: ExportFormat] }>();
 const hoverDay = ref<number | null>(null);
 const trend = computed(() => {
   const values = Array.from({ length: 7 }, () => ({ revenue: 0, cost: 0 }));
@@ -37,10 +38,8 @@ const chartPath = (key: 'revenue' | 'cost') =>
         <p>Pendapatan dan biaya dari batch pada periode terpilih</p>
       </div>
       <div class="legend">
-        <span><i class="blue"></i>Pendapatan</span><span><i class="orange"></i>Biaya</span
-        ><button class="icon-button" aria-label="Unduh data grafik" @click="$emit('download')">
-          <IconDownload :size="17" />
-        </button>
+        <span><i class="blue"></i>Pendapatan</span><span><i class="orange"></i>Biaya</span>
+        <ExportActions label="Unduh ringkasan" :exporting="exporting" @download="$emit('download', $event)" />
       </div>
     </div>
     <div class="chart">
@@ -142,3 +141,8 @@ const chartPath = (key: 'revenue' | 'cost') =>
     </div>
   </section>
 </template>
+
+<style scoped>
+.chart-section > .section-heading { flex-wrap: wrap; }
+.legend { flex-wrap: wrap; }
+</style>

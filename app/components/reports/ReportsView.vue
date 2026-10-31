@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { IconDownload } from '@tabler/icons-vue';
 import type { UnwrapRef } from 'vue';
 import type { Batch } from '#shared/types/workspace';
 import type { useReports } from '../../features/reports/useReports';
 import { idr, kg } from '../../utils/workspace-format';
 import ReportDetail from './ReportDetail.vue';
 import ReportTable from './ReportTable.vue';
+import ExportActions from '../ExportActions.vue';
 defineProps<{ model: UnwrapRef<ReturnType<typeof useReports>>; batches: Batch[] }>();
 defineEmits<{ open: [batch: Batch] }>();
 </script>
@@ -42,8 +42,8 @@ defineEmits<{ open: [batch: Batch] }>();
         ><small>Pembelian + biaya perjalanan</small>
       </div>
       <div>
-        <span>Laba gabungan</span><strong>{{ idr(model.totals.profit) }}</strong
-        ><small>Diperbarui setiap ada transaksi</small>
+        <span>Laba gabungan</span><strong>{{ idr(model.profitTotals.profit) }}</strong
+        ><small>Hanya batch yang sudah memiliki penjualan</small>
       </div>
     </div>
     <section class="report-results" aria-label="Rekap keuangan per batch">
@@ -52,11 +52,14 @@ defineEmits<{ open: [batch: Batch] }>();
           <h2>Rekap keuangan per batch</h2>
           <p>Pilih rincian untuk melihat seluruh transaksi dan perhitungan bobot.</p>
         </div>
-        <button class="secondary" @click="model.download">
-          <IconDownload :size="17" /> Ekspor detail CSV
-        </button>
+        <ExportActions label="Ekspor detail" :exporting="model.exporting" @download="model.download" />
       </div>
-      <ReportTable v-model:expanded="model.expanded" :batches="model.rows" :totals="model.totals" />
+      <ReportTable
+        v-model:expanded="model.expanded"
+        :batches="model.rows"
+        :totals="model.totals"
+        :profit-totals="model.profitTotals"
+      />
       <div v-if="!model.rows.length" class="empty">
         Tidak ada batch yang sesuai dengan filter laporan.
       </div>
@@ -69,7 +72,13 @@ defineEmits<{ open: [batch: Batch] }>();
     /></template>
     <p class="report-disclaimer">
       Semua nilai diperbarui berdasarkan transaksi tersimpan di server. HPP efektif memakai bobot
-      terjual. Selisih positif merupakan tonjolan bobot, bukan pendapatan tambahan.
+      terjual. Laba gabungan dan margin total hanya menghitung batch yang sudah memiliki penjualan;
+      total modal tetap mencakup seluruh batch sesuai filter. Selisih positif merupakan tonjolan
+      bobot, bukan pendapatan tambahan.
     </p>
   </section>
 </template>
+
+<style scoped>
+.report-heading { flex-wrap: wrap; align-items: flex-start; }
+</style>

@@ -51,7 +51,23 @@ export function metrics(items: readonly FinancialItem[]) {
   };
 }
 
-/** Dashboard profit only recognizes costs from batches that have started selling. */
+/** Weighted batch averages; extra-weight sales value is not additional profit. */
+export function batchSummaryMetrics(items: readonly FinancialItem[]) {
+  const total = metrics(items);
+  return {
+    ...total,
+    purchasePerKg: total.bought.gt(0) ? total.purchases.div(total.bought) : null,
+    salePerKg: total.sold.gt(0) ? total.revenue.div(total.sold) : null,
+    differencePercent: total.bought.gt(0)
+      ? total.difference.div(total.bought).times(100)
+      : null,
+    extraWeightSalesValue: total.bought.gt(0) && total.sold.gt(0) && total.difference.gt(0)
+      ? total.difference.times(total.revenue).div(total.sold)
+      : null,
+  };
+}
+
+/** Combined profit only recognizes costs from batches that have started selling. */
 export function metricsForSoldBatches(
   batches: readonly { items: readonly FinancialItem[] }[],
 ) {

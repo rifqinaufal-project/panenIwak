@@ -3,7 +3,11 @@ import { IconChevronDown } from '@tabler/icons-vue';
 import type { Batch } from '#shared/types/workspace';
 import { metrics } from '#shared/utils/finance';
 import { dateLabel, idr, kg } from '../../utils/workspace-format';
-const props = defineProps<{ batches: Batch[]; totals: ReturnType<typeof metrics> }>();
+const props = defineProps<{
+  batches: Batch[];
+  totals: ReturnType<typeof metrics>;
+  profitTotals: ReturnType<typeof metrics>;
+}>();
 const expanded = defineModel<string | null>('expanded', { required: true });
 const rows = computed(() =>
   props.batches.map((batch) => ({ batch, totals: metrics(batch.items) })),
@@ -68,8 +72,8 @@ const rows = computed(() =>
           <td>{{ totals.bought.isZero() ? '—' : idr(totals.cost.div(totals.bought)) }}</td>
           <td>{{ totals.hpp === null ? '—' : idr(totals.hpp) }}</td>
           <td>{{ idr(totals.revenue) }}</td>
-          <td>{{ idr(totals.profit) }}</td>
-          <td>{{ totals.margin === null ? '—' : kg(totals.margin) + '%' }}</td>
+          <td>{{ idr(profitTotals.profit) }}</td>
+          <td>{{ profitTotals.margin === null ? '—' : kg(profitTotals.margin) + '%' }}</td>
           <td></td>
         </tr>
       </tfoot>

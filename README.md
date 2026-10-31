@@ -23,7 +23,7 @@ Terapkan seluruh file `supabase/migrations/` berurutan pada proyek Supabase sebe
 ## Fitur
 
 - Login username/password, sesi cookie, otorisasi server, serta pengelolaan akun oleh admin.
-- Dashboard, pembelian dan biaya dalam batch, penjualan multi-item, master ikan/size, laporan, dan ekspor CSV.
+- Dashboard, pembelian dan biaya dalam batch, penjualan multi-item, master ikan/size, laporan, dan ekspor CSV/PDF sesuai filter. PDF berisi ringkasan keuangan, rekap batch, bobot, harga rata-rata, dan HPP dengan tabel multi-halaman.
 - HPP umum berdasarkan bobot beli; HPP efektif berdasarkan bobot terjual. Biaya perjalanan dialokasikan menurut bobot beli, bukan size penjualan.
 - Koreksi/hapus transaksi, soft-delete batch, serta audit username dan data sebelum/sesudah.
 - Rincian Log menampilkan hanya kolom yang berubah, dengan format rupiah/bobot dan penanda ditambahkan/diubah/dihapus. Transaksi dicocokkan berdasarkan ID; data lama yang tidak lengkap diberi keterangan, bukan ditebak. Field teknis dan kredensial tidak ditampilkan dalam ringkasan.

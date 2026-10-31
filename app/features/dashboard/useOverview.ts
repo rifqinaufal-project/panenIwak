@@ -1,10 +1,13 @@
 import { computed, ref, type Ref } from 'vue';
+import type { ExportFormat } from '#shared/types/export';
 import type { Batch } from '#shared/types/workspace';
 import { metrics, metricsForSoldBatches } from '#shared/utils/finance';
 import { today } from '../../utils/workspace-format';
-import { downloadCsv } from '../../utils/download-csv';
+import { financialPdfReport } from '../../utils/financial-pdf-report';
+import { useReportDownload } from '../common/useReportDownload';
 
 export function useOverview(batches: Ref<Batch[]>, notify: (message: string) => void) {
+  const exporting = useReportDownload(notify);
   const period = ref('Bulan ini'),
     search = ref('');
   const visible = computed(() =>
@@ -23,23 +26,30 @@ export function useOverview(batches: Ref<Batch[]>, notify: (message: string) => 
     }),
   );
   const totals = computed(() => metricsForSoldBatches(visible.value));
-  function download() {
-    downloadCsv('panen-iwak-ringkasan.csv', [
-      ['Batch', 'Tanggal', 'Asal', 'Status', 'Pendapatan', 'Biaya', 'Laba'],
-      ...visible.value.map((batch) => {
-        const total = metrics(batch.items);
-        return [
-          batch.code,
-          batch.date,
-          batch.origin,
-          batch.closed ? 'Selesai' : 'Aktif',
-          total.revenue.toString(),
-          total.cost.toString(),
-          total.profit.toString(),
-        ];
+  function download(format: ExportFormat = 'csv') {
+    return exporting.download(format, () => ({
+      filename: 'panen-iwak-ringkasan',
+      pdf: financialPdfReport({
+        batches: visible.value,
+        scope: 'overview',
+        subtitle: `Periode: ${period.value}${search.value ? ` | Pencarian: ${search.value}` : ''}`,
       }),
-    ]);
-    notify('Ringkasan CSV berhasil diunduh.');
+      csvRows: [
+        ['Batch', 'Tanggal', 'Asal', 'Status', 'Pendapatan', 'Biaya', 'Laba'],
+        ...visible.value.map((batch) => {
+          const total = metrics(batch.items);
+          return [
+            batch.code,
+            batch.date,
+            batch.origin,
+            batch.closed ? 'Selesai' : 'Aktif',
+            total.revenue.toString(),
+            total.cost.toString(),
+            total.profit.toString(),
+          ];
+        }),
+      ],
+    }));
   }
-  return { period, search, visible, totals, download };
+  return { period, search, visible, totals, exporting: exporting.exporting, download };
 }
