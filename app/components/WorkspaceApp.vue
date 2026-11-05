@@ -30,6 +30,13 @@ const {
   confirmDialog,
 } = toRefs(workspace);
 const router = useRouter();
+const headingPeriod = computed({
+  get: () => (routing.value.page === 'Batch' ? overview.value.batchPeriod : overview.value.period),
+  set: (value: string) => {
+    if (routing.value.page === 'Batch') overview.value.batchPeriod = value as 'Semua' | 'Bulan ini' | 'Minggu ini';
+    else overview.value.period = value;
+  },
+});
 </script>
 
 <template>
@@ -72,10 +79,10 @@ const router = useRouter();
       <template v-else-if="!data.workspaceError">
         <template v-if="!routing.active && !routing.showForm">
           <WorkspaceHeading
-            v-model:period="overview.period"
+            v-model:period="headingPeriod"
             :page="routing.page"
             :revenue="overview.totals.revenue"
-            :batch-count="overview.visible.length"
+            :batch-count="routing.page === 'Batch' ? overview.batchVisible.length : overview.visible.length"
             :product-form="routing.showProductForm"
             :editing-product="!!routing.editingProductId"
             :exporting="routing.page === 'Laporan' ? reports.exporting : overview.exporting"
@@ -95,7 +102,7 @@ const router = useRouter();
           <BatchList
             v-if="routing.page === 'Batch'"
             v-model:search="overview.search"
-            :batches="overview.visible"
+            :batches="overview.batchVisible"
             @open="routing.openBatch"
           />
           <ReportsView

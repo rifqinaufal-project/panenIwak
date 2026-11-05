@@ -54,6 +54,7 @@ const description = computed(
     <div class="heading-actions">
       <label v-if="page === 'Dashboard' || page === 'Batch'" class="period">
         <IconCalendar :size="17" /><select v-model="period" aria-label="Periode laporan">
+          <option>Semua</option>
           <option>Bulan ini</option>
           <option>Minggu ini</option></select
         ><IconChevronDown :size="14" />

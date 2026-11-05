@@ -17,6 +17,33 @@ test('menu URLs, browser Back/Forward and refresh keep the selected screen', asy
   expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
 });
 
+test('batch list defaults to all records while dashboard keeps the current-month default', async ({ page }) => {
+  const state = await mockWorkspace(page);
+  const oldBatch = {
+    ...state.batches[0]!,
+    id: 'old-batch',
+    code: 'PI-OLD',
+    date: '2020-01-01',
+    items: state.batches[0]!.items.map((item) => ({ ...item, date: '2020-01-01' })),
+  };
+  state.batches.push(oldBatch);
+
+  await page.goto('/batch');
+  const period = page.getByRole('combobox', { name: 'Periode laporan', exact: true });
+  await expect(period).toHaveValue('Semua');
+  await expect(page.locator('.full-table-row')).toHaveCount(2);
+  await expect(page.locator('.nav-count')).toHaveText('2');
+  await expect(page.locator('.full-table-row').filter({ hasText: 'PI-OLD' })).toBeVisible();
+
+  await period.selectOption({ label: 'Bulan ini' });
+  await expect(page.locator('.full-table-row')).toHaveCount(1);
+  await expect(page.locator('.full-table-row').filter({ hasText: 'PI-OLD' })).toHaveCount(0);
+
+  await menu(page, 'Dashboard').click();
+  await expect(page.getByRole('combobox', { name: 'Periode laporan', exact: true })).toHaveValue('Bulan ini');
+  await expect(page.locator('.nav-count')).toHaveText('2');
+});
+
 test('batch and transaction deep links survive refresh, including edit values', async ({ page }) => {
   await mockWorkspace(page);
   await page.goto('/batch/b1');
